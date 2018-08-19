@@ -49,7 +49,7 @@ class Poem:
         stanzas = self.body.split("\n\n")
         for stanza in stanzas:
             for line in stanza.split("\n"):
-                if len(line) > 0:
+                if line:
                     tex += line + " \\\\ "
             tex += " \\vspace{0.4cm} "
         tex += "\end{verse} "
