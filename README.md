@@ -6,7 +6,8 @@ An API to access poetry from the popular site [allpoetry.com](https://allpoetry.
 
 ## Example usage
 You can retrieve all the poems written by a user with:
-```
+
+```python
 import allpoetryapi
 query_username = "whose_poems_you_want_to_fetch"
 login_username, login_passowrd = "your_user", "your_password"
