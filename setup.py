@@ -1,6 +1,6 @@
 from setuptools import setup, find_packages
 
-with open("Readme.md", "r") as fh:
+with open("README.md", "r") as fh:
     long_description = fh.read()
 
 setup(name='allpoetryapi',
@@ -17,4 +17,7 @@ setup(name='allpoetryapi',
       scripts=[],
       long_description=long_description,
       long_description_content_type="text/markdown",
-      install_requires=[])
+      install_requires=['requests',
+                        'bs4',
+                        'lxml',
+                        'python-dateutil'])
