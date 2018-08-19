@@ -10,13 +10,13 @@ class Poem:
     """ Container for a poem with associated metadata from allpoetry.com """
 
     def __init__(self, title=None, body=None, meta=None, url=None, date=None,
-                 count_likes=None, count_views=None):
+                 count_likes=None, count_views=None, categories=None):
         """
         initialize a poem object
         :param title: the title of the poem
         :type title: str
         :param body: the poem's lines
-        :type body: list
+        :type body: list of str
         :param meta: the copyright information and extra author's comments
         :type meta: str
         :param url: the url of the poem
@@ -27,6 +27,8 @@ class Poem:
         :type count_likes: int
         :param count_views: how many people viewed the poem
         :type count_views: int
+        :param categories: genres assigned to poem
+        :type categories: list of str
         """
         self.title = title
         self.body = body
@@ -34,8 +36,15 @@ class Poem:
         self.url = url
         self.count_like = count_likes
         self.count_view = count_views
-        self.copyright = copyright
         self.date = date
+        self.categories = categories
+
+    def __len__(self):
+        """
+        :return: number of words in poem
+        :rtype: int
+        """
+        return len((" ".join(self.body)).split(" "))
 
     def _texed(self):
         """
@@ -43,25 +52,26 @@ class Poem:
         :return: the poem formatted in LaTeX
         :rtype: str
         """
-        tex = "\poemtitle{" + self.title + "}"
-
-        tex += "\\begin{verse}"
-        stanzas = self.body.split("\n\n")
-        for stanza in stanzas:
-            for line in stanza.split("\n"):
-                if line:
-                    tex += line + " \\\\ "
-            tex += " \\vspace{0.4cm} "
-        tex += "\end{verse} "
-        tex += "\attrib{" + str(self.date) + "} "
-        tex += " \\newpage"
-
-        # the quotation marks are wonky... find them and fix them
-        p = re.compile('"([\w\s.!?\\-,]+)"')
-        for quote in p.findall(tex):
-            new = "\enquote{" + quote + "}"
-            tex = tex.replace('"' + quote + '"', new)
-        return tex
+        raise NotImplementedError()
+        # tex = "\poemtitle{" + self.title + "}"
+        #
+        # tex += "\\begin{verse}"
+        # stanzas = self.body.split("\n\n")
+        # for stanza in stanzas:
+        #     for line in stanza.split("\n"):
+        #         if line:
+        #             tex += line + " \\\\ "
+        #     tex += " \\vspace{0.4cm} "
+        # tex += "\end{verse} "
+        # tex += "\attrib{" + str(self.date) + "} "
+        # tex += " \\newpage"
+        #
+        # # the quotation marks are wonky... find them and fix them
+        # p = re.compile('"([\w\s.!?\\-,]+)"')
+        # for quote in p.findall(tex):
+        #     new = "\enquote{" + quote + "}"
+        #     tex = tex.replace('"' + quote + '"', new)
+        # return tex
 
 
 class AllPoetry:
@@ -92,6 +102,40 @@ class AllPoetry:
         :rtype: str
         """
         return "https://allpoetryapi.com/poems/read_by/{}?page={}".format(username, n)
+
+    def get_user_poem_links(self, username, at_least=None):
+        """
+
+        :param username:
+        :return:
+        """
+        def get_nth_links(i):
+            links_url = "https://allpoetry.com/{}?links=1&page={}".format(username, i)
+            links = self.session.get(links_url)
+            links_soup = BeautifulSoup(links.text, 'html.parser')
+            links = dict()
+            for entry in links_soup.select(".t_links")[0].select(".clearfix")[0].find_all('div', {'class': "itm"}):
+                entry = entry.select("a")[0]
+                title = entry.text
+                url = "https://allpoetry.com" + entry['href']
+                links[title] = url
+            return links
+
+        links = dict()
+        get_more_poems, i = True, 1
+        while get_more_poems:
+            new_links = get_nth_links(i)
+            if new_links:
+                for title, url in new_links.items():
+                    links[title] = url
+            else:
+                get_more_poems = False
+            print(len(links), len(new_links), get_more_poems)
+            if at_least and len(links) >= at_least:
+                get_more_poems = False
+            i+=1
+
+        return links
 
     def get_poem_by_url(self, poem_url):
         """
