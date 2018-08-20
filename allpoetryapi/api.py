@@ -2,13 +2,14 @@ import requests
 import lxml.html
 from dateutil.parser import parse as parse_date
 from bs4 import BeautifulSoup  # parsing html
+from collections import namedtuple
 
 
 class Poem:
     """ Container for a poem with associated metadata from allpoetry.com """
 
     def __init__(self, title=None, body=None, meta=None, url=None, date=None,
-                 count_likes=None, count_views=None, categories=None):
+                 count_likes=None, count_views=None, categories=None, comments=None):
         """
         initialize a poem object
         :param title: the title of the poem
@@ -36,6 +37,7 @@ class Poem:
         self.count_view = count_views
         self.date = date
         self.categories = categories
+        self.comments = comments
 
     def __len__(self):
         """
@@ -70,6 +72,9 @@ class Poem:
         #     new = "\enquote{" + quote + "}"
         #     tex = tex.replace('"' + quote + '"', new)
         # return tex
+
+
+Comment = namedtuple("Comment", ['user', 'date', 'text', 'replies'])
 
 
 class AllPoetry:
@@ -113,8 +118,10 @@ class AllPoetry:
         :return: mapping of poem titles to their urls
         :rtype: dict
         """
-        def get_nth_links(i):
-            links_url = "https://allpoetry.com/{}?links=1&page={}".format(username, i)
+
+        def get_nth_links(n):
+            """ load the links for the n-th page of the user's poems"""
+            links_url = "https://allpoetry.com/{}?links=1&page={}".format(username, n)
             links = self.session.get(links_url)
             links_soup = BeautifulSoup(links.text, 'html.parser')
             links = dict()
@@ -127,6 +134,7 @@ class AllPoetry:
 
         links = dict()
         get_more_poems, i = True, 1
+        # run until either all poems have been fetched because the page is blank or a desired number have been fetched
         while get_more_poems:
             new_links = get_nth_links(i)
             if new_links:
@@ -134,18 +142,65 @@ class AllPoetry:
                     links[title] = url
             else:
                 get_more_poems = False
-            print(len(links), len(new_links), get_more_poems)
+
             if at_least and len(links) >= at_least:
                 get_more_poems = False
             i += 1
 
         return links
 
-    def get_poem_by_url(self, poem_url):
+    def get_comments_by_url(self, poem_url, page_number):
+        """
+        get the comments associated with a page
+        :param poem_url: the page for the poem
+        :type poem_url: str
+        :param page_number: which page of comments to fetch
+        :type page_number: int
+        :return: list of Comments
+        :rtype: list of Comment
+        """
+
+        poem_html = self.session.get(poem_url + "?page={}".format(page_number))
+        poem_soup = BeautifulSoup(poem_html.text, 'html.parser')
+
+        comment_list = poem_soup.select(".comments")[0].select(".media")
+        comments = []
+        ref_comment = dict()  # the most recent comment at that depth already
+
+        for comment_raw in comment_list:
+            depth = int(comment_raw.get("data-depth"))
+            user = comment_raw.select(".u")[0].text
+            date = parse_date(comment_raw.select(".timeago ")[0].get("title"))
+
+            # since the text is embedded between tags, it's a bit of a mess to extract so we just delete the portions
+            # that we want to ignore
+            text = comment_raw.select(".media-body")[0].text
+            text = text.replace(user, "")[3:]
+            date_str = comment_raw.select(".media-body")[0].select(".timeago")[0].text
+            text = text[:text.index(date_str)].strip()
+
+            comment = Comment(user, date, text, [])
+
+            # add the comment in the appropriate depth
+            if depth == 0:
+                ref_comment = {depth: comment}
+                comments.append(comment)
+            else:
+                ref_comment[depth] = comment
+                ref_comment[depth - 1].replies.append(comment)
+
+        if comment_list:
+            comments += self.get_comments_by_url(poem_url, page_number=page_number+1)
+
+        return comments
+
+    def get_poem_by_url(self, poem_url, fetch_comments=False):
         """
         given an allpoetry.com url retrieve the poem and parse metadata
         :param poem_url: string for location of poem
         :rtype poem_url: str
+        :param fetch_comments: if True will also get comments for poems, ignores otherwise
+        :type fetch_comments: bool
         :return: a poem object with all metadata
         :rtype: Poem
         """
@@ -184,6 +239,10 @@ class AllPoetry:
             count_likes = None
         finally:
             contents['count_likes'] = count_likes
+
+        if fetch_comments:
+            comments = self.get_comments_by_url(poem_url,1)
+            contents['comments'] = comments
 
         return Poem(**contents)
 
