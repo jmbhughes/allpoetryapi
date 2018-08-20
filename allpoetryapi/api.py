@@ -43,6 +43,12 @@ class Poem:
         self.categories = categories
         self.comments = comments
 
+    def __str__(self):
+        """
+        :return: a printed version of the poem itself
+        """
+        return (self.title + " by {}".format(self.author) + "\n" + "-" * 40) + "\n" + "\n".join(self.body)
+
     def __len__(self):
         """
         :return: number of words in poem
