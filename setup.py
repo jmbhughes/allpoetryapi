@@ -20,4 +20,5 @@ setup(name='allpoetryapi',
       install_requires=['requests',
                         'bs4',
                         'lxml',
-                        'python-dateutil'])
+                        'python-dateutil',
+                        'Pillow'])

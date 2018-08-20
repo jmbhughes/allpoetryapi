@@ -3,6 +3,7 @@ import lxml.html
 from dateutil.parser import parse as parse_date
 from bs4 import BeautifulSoup  # parsing html
 from collections import namedtuple
+from PIL import Image
 
 
 class Poem:
@@ -269,6 +270,19 @@ class AllPoetry:
         errors = BeautifulSoup(response.text, 'html.parser').select('.error')
         if errors:
             raise RuntimeError("Error logging in: {}".format("&&".join([e.text for e in errors])))
+
+    def get_user_picture(self, username):
+        """
+        retrieve a user profile picture
+        :param username: which  user to fetch
+        :rtype username: str
+        :return: the user's profile picture
+        :rtype: PIL.JpegImagePlugin.JpegImageFile
+        """
+        url_user = "https://allpoetry.com/{}".format(username)
+        soup = BeautifulSoup(self.session.get(url_user).text, 'html.parser')
+        url_img =  "https:" + soup.select(".media-figure")[0].get("src")
+        return Image.open(Image.io.BytesIO(self.session.get(url_img).content))
 
     @staticmethod
     def _parse_view_string(view_string):
