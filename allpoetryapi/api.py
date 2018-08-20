@@ -127,9 +127,9 @@ class Comment:
                 reply = replies.pop()
                 count += len(reply.replies)
                 replies += reply.replies
-            return count
         else:
-            return 0
+            count = 0
+        return count
 
 
 class AllPoetry:
