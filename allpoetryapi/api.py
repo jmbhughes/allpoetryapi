@@ -9,12 +9,14 @@ from PIL import Image
 class Poem:
     """ Container for a poem with associated metadata from allpoetry.com """
 
-    def __init__(self, title=None, body=None, meta=None, url=None, date=None,
+    def __init__(self, title=None, author=None, body=None, meta=None, url=None, date=None,
                  count_likes=None, count_views=None, categories=None, comments=None):
         """
         initialize a poem object
         :param title: the title of the poem
         :type title: str
+        :param author: who wrote this poem, their allpoetry.com username
+        :type author: str
         :param body: the poem's lines
         :type body: list of str
         :param meta: the copyright information and extra author's comments
@@ -31,6 +33,7 @@ class Poem:
         :type categories: list of str
         """
         self.title = title
+        self.author = author
         self.body = body
         self.meta = meta
         self.url = url
@@ -46,6 +49,20 @@ class Poem:
         :rtype: int
         """
         return len((" ".join(self.body)).split(" "))
+
+    def num_comments(self):
+        """
+        :return: number of comments on the poem
+        :rtype: int
+        """
+        return sum([comment.num_replies()+1 for comment in self.comments]) if self.comments is not None else 0
+
+    def num_comment_threads(self):
+        """
+        :return: number of comment threads
+        :rtype: int
+        """
+        return len(self.comments) if self.comments is not None else 0
 
     def _texed(self):
         """
@@ -75,7 +92,44 @@ class Poem:
         # return tex
 
 
-Comment = namedtuple("Comment", ['user', 'date', 'text', 'replies'])
+# Comment = namedtuple("Comment", ['user', 'date', 'text', 'replies'])
+
+
+class Comment:
+    """ container comments, structured so that a comment includes a link to its replies"""
+
+    def __init__(self, user=None, date=None, text=None, replies=None):
+        """
+        initialize comment
+        :param user: the user making the comment
+        :type user: str
+        :param date: the time when the comment was made
+        :type date: datetime.datetime
+        :param text: the text content of the comment
+        :type text: str
+        :param replies: all comment replies made to this comment
+        :type replies: list of Comment
+        """
+        self.user = user
+        self.date = date
+        self.text = text
+        self.replies = replies
+
+    def num_replies(self):
+        """
+        :return: the number of replies to a comment
+        :rtype: int
+        """
+        if self.replies: # is not None or empty
+            replies = [r for r in self.replies]
+            count = len(replies)
+            while replies:
+                reply = replies.pop()
+                count += len(reply.replies)
+                replies += reply.replies
+            return count
+        else:
+            return 0
 
 
 class AllPoetry:
@@ -164,7 +218,11 @@ class AllPoetry:
         poem_html = self.session.get(poem_url + "?page={}".format(page_number))
         poem_soup = BeautifulSoup(poem_html.text, 'html.parser')
 
-        comment_list = poem_soup.select(".comments")[0].select(".media")
+        try:
+            comment_list = poem_soup.select(".comments")[0].select(".media")
+        except IndexError:  # no comments section found,
+            comment_list = []
+
         comments = []
         ref_comment = dict()  # the most recent comment at that depth already
 
@@ -216,6 +274,7 @@ class AllPoetry:
         contents['title']= poem_soup.select(".title")[0].text  # title of poem
         contents['meta'] = poem_soup.find_all("div", {"class": "copyright"})[0].text  # extra information at end of poem
         contents['body'] = poem_soup.select(".poem_body")[0].text.split(contents['meta'])[0].split("\n")  # poem text
+        contents['author'] = poem_soup.select(".bio")[0].select(".u")[0].get("href")[1:]
 
         view_string = poem_soup.find("span", {"id": "views"}).text.split("views")[0].strip()
         contents['count_views']= self._parse_view_string(view_string)
