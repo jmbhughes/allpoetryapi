@@ -1,9 +1,7 @@
 import requests
 import lxml.html
-import re
 from dateutil.parser import parse as parse_date
-from datetime import datetime
-from bs4 import BeautifulSoup #parsing html
+from bs4 import BeautifulSoup  # parsing html
 
 
 class Poem:
@@ -75,6 +73,7 @@ class Poem:
 
 
 class AllPoetry:
+    """ API to access poems on allpoetry.com"""
     LOGIN_URL = "https://allpoetry.com/login"
 
     def __init__(self, login_username=None, login_password=None):
@@ -105,9 +104,14 @@ class AllPoetry:
 
     def get_user_poem_links(self, username, at_least=None):
         """
-
-        :param username:
-        :return:
+        retrieve names of all poems written by user
+        :param username: name of user (from URL) to search
+        :type username: str
+        :param at_least: approximate number of most recent poems titles to return, may slightly exceed this number
+            if None, will return all poems
+        :type at_least: int
+        :return: mapping of poem titles to their urls
+        :rtype: dict
         """
         def get_nth_links(i):
             links_url = "https://allpoetry.com/{}?links=1&page={}".format(username, i)
@@ -133,7 +137,7 @@ class AllPoetry:
             print(len(links), len(new_links), get_more_poems)
             if at_least and len(links) >= at_least:
                 get_more_poems = False
-            i+=1
+            i += 1
 
         return links
 
