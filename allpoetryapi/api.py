@@ -235,7 +235,10 @@ class AllPoetry:
         for comment_raw in comment_list:
             depth = int(comment_raw.get("data-depth"))
             user = comment_raw.select(".u")[0].text
-            date = parse_date(comment_raw.select(".timeago ")[0].get("title"))
+            try:
+                date = parse_date(comment_raw.select(".timeago ")[0].get("title"))
+            except IndexError:
+                date = None
 
             # since the text is embedded between tags, it's a bit of a mess to extract so we just delete the portions
             # that we want to ignore
